@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Tracker with Login</title>
+    <style>
+        /* Basic styling */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212; /* Dark background */
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+        }
+
+        /* Container for main content */
+        .container {
+            background: rgba(33, 33, 33, 0.9);
+            padding: 30px;
+            width: 320px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
+            display: none; /* Hidden until login */
+        }
+
+        /* Login popup styling */
+        .login-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(48, 48, 48, 0.9);
+            padding: 20px;
+            width: 300px;
+            border-radius: 15px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
+            text-align: center;
+        }
+
+        .login-popup h2 {
+            color: #90caf9;
+            margin-bottom: 20px;
+        }
+
+        .login-popup input {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+        }
+
+        .login-popup button {
+            background-color: #90caf9;
+            color: #121212;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Displaying the total debt */
+        .total {
+            font-size: 26px;
+            font-weight: bold;
+            color: #90caf9;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Transaction styling */
+        .transactions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .transaction {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(48, 48, 48, 0.8);
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+        }
+
+        .transaction.debt div:first-child {
+            color: #e57373;
+            font-weight: bold;
+        }
+
+        .transaction.payment div:first-child {
+            color: #81c784;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Popup -->
+    <div id="login-popup" class="login-popup">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username" />
+        <input type="password" id="password" placeholder="Password" />
+        <button onclick="login()">Login</button>
+        <div id="login-error" style="color: red; margin-top: 10px;"></div>
+    </div>
+
+    <!-- Main Container (hidden until login) -->
+    <div class="container" id="main-container">
+        <div id="total-debt" class="total">Loading...</div>
+        <div id="transaction-list" class="transactions"></div>
+    </div>
+
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
+            authDomain: "debts-92f72.firebaseapp.com",
+            projectId: "debts-92f72",
+            storageBucket: "debts-92f72.firebaseapp.com",
+            messagingSenderId: "904817355212",
+            appId: "1:904817355212:web:fd6837ba25f57d0ec6d569"
+        };
+
+        // Initialize Firebase and Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Login Function
+        async function login() {
+            const username = document.getElementById("username").value;
+            const password = Number(document.getElementById("password").value); // Convert password to a number
+            const loginError = document.getElementById("login-error");
+
+            try {
+                // Query for matching username and password in the "login" collection
+                const loginRef = collection(db, "login");
+                const loginQuery = query(loginRef, where("user", "==", username), where("password", "==", password));
+                const loginSnapshot = await getDocs(loginQuery);
+
+                if (!loginSnapshot.empty) {
+                    // Hide the login popup and show the main container
+                    document.getElementById("login-popup").style.display = "none";
+                    document.getElementById("main-container").style.display = "block";
+                    loadTransactions(); // Load transactions upon successful login
+                } else {
+                    loginError.innerText = "Invalid username or password.";
+                }
+            } catch (error) {
+                console.error("Login error:", error);
+                loginError.innerText = "Error during login. Please try again.";
+            }
+        }
+
+        // Expose the login function globally
+        window.login = login;
+
+        // Function to Load Transactions from Firestore
+        async function loadTransactions() {
+            const transactionsRef = collection(db, "transactions");
+            try {
+                const transactionSnapshot = await getDocs(transactionsRef);
+
+                let totalDebt = 0;
+                const transactionList = [];
+
+                transactionSnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const type = data.type.replace(/^"|"$/g, ''); // Remove surrounding quotes
+                    const date = data.date.replace(/^"|"$/g, ''); // Remove surrounding quotes
+                    const amount = Number(data.amount);
+
+                    transactionList.push({ ...data, type, date });
+
+                    if (type === "debt") {
+                        totalDebt += amount;
+                    } else if (type === "payment") {
+                        totalDebt -= amount;
+                    }
+                });
+
+                document.getElementById("total-debt").innerText = `-${totalDebt} Ft`;
+
+                const transactionContainer = document.getElementById("transaction-list");
+                transactionContainer.innerHTML = "";
+                transactionList.forEach((transaction) => {
+                    const transactionElement = document.createElement("div");
+                    transactionElement.className = `transaction ${transaction.type}`;
+                    transactionElement.innerHTML = `
+                        <div>${transaction.type === "debt" ? "-" : "+"}${transaction.amount} Ft</div>
+                        <div>${transaction.date}</div>
+                    `;
+                    transactionContainer.appendChild(transactionElement);
+                });
+            } catch (error) {
+                console.error("Error loading transactions:", error);
+                document.getElementById("total-debt").innerText = "Error loading transactions.";
+            }
+        }
+    </script>
+</body>
+</html>
