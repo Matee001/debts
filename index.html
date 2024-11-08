@@ -133,7 +133,7 @@
             apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
             authDomain: "debts-92f72.firebaseapp.com",
             projectId: "debts-92f72",
-            storageBucket: "debts-92f72.firebaseapp.com",
+            storageBucket: "debts-92f72.appspot.com",
             messagingSenderId: "904817355212",
             appId: "1:904817355212:web:fd6837ba25f57d0ec6d569"
         };
@@ -188,22 +188,26 @@
 
                     transactionList.push({ ...data, type, date });
 
+                    // Update total debt based on transaction type
                     if (type === "debt") {
-                        totalDebt += amount;
+                        totalDebt -= amount; // Subtract debt
                     } else if (type === "payment") {
-                        totalDebt -= amount;
+                        totalDebt += amount; // Add payment
                     }
                 });
 
-                document.getElementById("total-debt").innerText = `-${totalDebt} Ft`;
+                // Display the total debt as negative for debt, positive for payments
+                document.getElementById("total-debt").innerText = `${totalDebt} Ft`;
 
+                // Display each transaction with correct signs
                 const transactionContainer = document.getElementById("transaction-list");
                 transactionContainer.innerHTML = "";
                 transactionList.forEach((transaction) => {
                     const transactionElement = document.createElement("div");
                     transactionElement.className = `transaction ${transaction.type}`;
+                    const sign = transaction.type === "debt" ? "-" : "+";
                     transactionElement.innerHTML = `
-                        <div>${transaction.type === "debt" ? "-" : "+"}${transaction.amount} Ft</div>
+                        <div>${sign}${transaction.amount} Ft</div>
                         <div>${transaction.date}</div>
                     `;
                     transactionContainer.appendChild(transactionElement);
