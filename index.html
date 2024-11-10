@@ -17,7 +17,7 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
-            background-color: #121212; /* Dark background */
+            background-color: #121212;
             font-family: Arial, sans-serif;
             color: #ffffff;
         }
@@ -104,6 +104,19 @@
             color: #81c784;
             font-weight: bold;
         }
+
+        /* Style for the 'Show All' button */
+        .show-all-button {
+            background-color: #90caf9;
+            color: #121212;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -121,6 +134,7 @@
     <div class="container" id="main-container">
         <div id="total-debt" class="total">Loading...</div>
         <div id="transaction-list" class="transactions"></div>
+        <button id="show-all-button" class="show-all-button" onclick="showAllTransactions()">Show All</button>
     </div>
 
     <script type="module">
@@ -145,20 +159,18 @@
         // Login Function
         async function login() {
             const username = document.getElementById("username").value;
-            const password = Number(document.getElementById("password").value); // Convert password to a number
+            const password = Number(document.getElementById("password").value);
             const loginError = document.getElementById("login-error");
 
             try {
-                // Query for matching username and password in the "login" collection
                 const loginRef = collection(db, "login");
                 const loginQuery = query(loginRef, where("user", "==", username), where("password", "==", password));
                 const loginSnapshot = await getDocs(loginQuery);
 
                 if (!loginSnapshot.empty) {
-                    // Hide the login popup and show the main container
                     document.getElementById("login-popup").style.display = "none";
                     document.getElementById("main-container").style.display = "block";
-                    loadTransactions(); // Load transactions upon successful login
+                    loadTransactions();
                 } else {
                     loginError.innerText = "Invalid username or password.";
                 }
@@ -171,52 +183,62 @@
         // Expose the login function globally
         window.login = login;
 
-        // Function to Load Transactions from Firestore
+        let allTransactions = [];
+        const TRANSACTION_LIMIT = 5;
+
         async function loadTransactions() {
             const transactionsRef = collection(db, "transactions");
             try {
                 const transactionSnapshot = await getDocs(transactionsRef);
 
                 let totalDebt = 0;
-                const transactionList = [];
+                allTransactions = [];
 
                 transactionSnapshot.forEach((doc) => {
                     const data = doc.data();
-                    const type = data.type.replace(/^"|"$/g, ''); // Remove surrounding quotes
-                    const date = data.date.replace(/^"|"$/g, ''); // Remove surrounding quotes
+                    const type = data.type.replace(/^"|"$/g, '');
+                    const date = data.date.replace(/^"|"$/g, '');
                     const amount = Number(data.amount);
 
-                    transactionList.push({ ...data, type, date });
+                    allTransactions.push({ ...data, type, date });
 
-                    // Update total debt based on transaction type
                     if (type === "debt") {
-                        totalDebt -= amount; // Subtract debt
+                        totalDebt -= amount;
                     } else if (type === "payment") {
-                        totalDebt += amount; // Add payment
+                        totalDebt += amount;
                     }
                 });
 
-                // Display the total debt as negative for debt, positive for payments
                 document.getElementById("total-debt").innerText = `${totalDebt} Ft`;
-
-                // Display each transaction with correct signs
-                const transactionContainer = document.getElementById("transaction-list");
-                transactionContainer.innerHTML = "";
-                transactionList.forEach((transaction) => {
-                    const transactionElement = document.createElement("div");
-                    transactionElement.className = `transaction ${transaction.type}`;
-                    const sign = transaction.type === "debt" ? "-" : "+";
-                    transactionElement.innerHTML = `
-                        <div>${sign}${transaction.amount} Ft</div>
-                        <div>${transaction.date}</div>
-                    `;
-                    transactionContainer.appendChild(transactionElement);
-                });
+                renderTransactions(allTransactions.slice(0, TRANSACTION_LIMIT));
             } catch (error) {
                 console.error("Error loading transactions:", error);
                 document.getElementById("total-debt").innerText = "Error loading transactions.";
             }
         }
+
+        function renderTransactions(transactions) {
+            const transactionContainer = document.getElementById("transaction-list");
+            transactionContainer.innerHTML = "";
+
+            transactions.forEach((transaction) => {
+                const transactionElement = document.createElement("div");
+                transactionElement.className = `transaction ${transaction.type}`;
+                const sign = transaction.type === "debt" ? "-" : "+";
+                transactionElement.innerHTML = `
+                    <div>${sign}${transaction.amount} Ft</div>
+                    <div>${transaction.date}</div>
+                `;
+                transactionContainer.appendChild(transactionElement);
+            });
+        }
+
+        function showAllTransactions() {
+            renderTransactions(allTransactions);
+            document.getElementById("show-all-button").style.display = "none";
+        }
+
+        window.showAllTransactions = showAllTransactions;
     </script>
 </body>
 </html>
