@@ -105,8 +105,8 @@
             font-weight: bold;
         }
 
-        /* Style for the 'Show All' button */
-        .show-all-button {
+        /* Style for the 'Show All' and 'Show Less' buttons */
+        .show-button {
             background-color: #90caf9;
             color: #121212;
             padding: 10px 20px;
@@ -124,9 +124,11 @@
     <!-- Login Popup -->
     <div id="login-popup" class="login-popup">
         <h2>Login</h2>
-        <input type="text" id="username" placeholder="Username" />
-        <input type="password" id="password" placeholder="Password" />
-        <button onclick="login()">Login</button>
+        <form id="login-form">
+            <input type="email" id="email" placeholder="Email" autocomplete="username" required />
+            <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
+            <button type="button" onclick="login()">Login</button>
+        </form>
         <div id="login-error" style="color: red; margin-top: 10px;"></div>
     </div>
 
@@ -134,12 +136,13 @@
     <div class="container" id="main-container">
         <div id="total-debt" class="total">Loading...</div>
         <div id="transaction-list" class="transactions"></div>
-        <button id="show-all-button" class="show-all-button" onclick="showAllTransactions()">Show All</button>
+        <button id="toggle-transactions-button" class="show-button" onclick="toggleTransactions()">Show All</button>
     </div>
 
     <script type="module">
         // Import Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
         // Firebase Configuration
@@ -155,28 +158,28 @@
         // Initialize Firebase and Firestore
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        // Login Function
+        // Login Function using Firebase Auth
         async function login() {
-            const username = document.getElementById("username").value;
-            const password = Number(document.getElementById("password").value);
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
             const loginError = document.getElementById("login-error");
 
             try {
-                const loginRef = collection(db, "login");
-                const loginQuery = query(loginRef, where("user", "==", username), where("password", "==", password));
-                const loginSnapshot = await getDocs(loginQuery);
+                // Sign in the user with Firebase Auth
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
 
-                if (!loginSnapshot.empty) {
-                    document.getElementById("login-popup").style.display = "none";
-                    document.getElementById("main-container").style.display = "block";
-                    loadTransactions();
-                } else {
-                    loginError.innerText = "Invalid username or password.";
-                }
+                // Hide login popup and show main content
+                document.getElementById("login-popup").style.display = "none";
+                document.getElementById("main-container").style.display = "block";
+
+                // Load user-specific transactions
+                loadTransactions(user.uid);
             } catch (error) {
                 console.error("Login error:", error);
-                loginError.innerText = "Error during login. Please try again.";
+                loginError.innerText = "Invalid email or password.";
             }
         }
 
@@ -186,8 +189,9 @@
         let allTransactions = [];
         const TRANSACTION_LIMIT = 5;
 
-        async function loadTransactions() {
-            const transactionsRef = collection(db, "transactions");
+        // Load user-specific transactions from the Firestore collection named by UID
+        async function loadTransactions(uid) {
+            const transactionsRef = collection(db, uid);
             try {
                 const transactionSnapshot = await getDocs(transactionsRef);
 
@@ -217,6 +221,7 @@
             }
         }
 
+        // Render the list of transactions
         function renderTransactions(transactions) {
             const transactionContainer = document.getElementById("transaction-list");
             transactionContainer.innerHTML = "";
@@ -233,12 +238,19 @@
             });
         }
 
-        function showAllTransactions() {
-            renderTransactions(allTransactions);
-            document.getElementById("show-all-button").style.display = "none";
+        // Toggle between "Show All" and "Show Less" functionality
+        function toggleTransactions() {
+            const button = document.getElementById("toggle-transactions-button");
+            if (button.innerText === "Show All") {
+                renderTransactions(allTransactions);
+                button.innerText = "Show Less";
+            } else {
+                renderTransactions(allTransactions.slice(0, TRANSACTION_LIMIT));
+                button.innerText = "Show All";
+            }
         }
 
-        window.showAllTransactions = showAllTransactions;
+        window.toggleTransactions = toggleTransactions;
     </script>
 </body>
 </html>
