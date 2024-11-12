@@ -7,50 +7,94 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #121212;
+            color: #E0E0E0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #E0E0E0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            text-align: left;
+        }
+        #loginForm, #adminDashboard {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <h1>Admin Dashboard</h1>
-    
-    <!-- Login Form -->
-    <div id="loginForm">
-        <h2>Login</h2>
-        <input type="email" id="email" placeholder="Email">
-        <input type="password" id="password" placeholder="Password">
-        <button onclick="login()">Login</button>
-        <p id="errorMessage" style="color: red;"></p>
-    </div>
+    <div id="container">
+        <h1>Admin Dashboard</h1>
 
-    <!-- Main Admin Dashboard (Visible after login) -->
-    <div id="adminDashboard" style="display: none;">
-        <button onclick="logout()">Logout</button>
-        
-        <h2>Select User</h2>
-        <select id="userDropdown" onchange="fetchTransactions(this.value)">
-            <option value="">Select a User</option>
-        </select>
+        <!-- Login Form -->
+        <div id="loginForm">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p id="errorMessage" style="color: red;"></p>
+        </div>
 
-        <h2>User Transactions</h2>
-        <table id="transactionsTable" border="1">
-            <thead>
-                <tr>
-                    <th>Amount</th>
-                    <th>Date</th>
-                    <th>Type</th>
-                </tr>
-            </thead>
-            <tbody id="transactionsList">
-                <!-- Transactions will be listed here -->
-            </tbody>
-        </table>
+        <!-- Main Admin Dashboard -->
+        <div id="adminDashboard">
+            <button onclick="logout()">Logout</button>
 
-        <h2>Add Transaction</h2>
-        <input type="number" id="amount" placeholder="Amount">
-        <input type="text" id="date" placeholder="Date (e.g., '11.09')">
-        <select id="type">
-            <option value="payment">Payment</option>
-            <option value="debt">Debt</option>
-        </select>
-        <button onclick="addTransaction()">Add Transaction</button>
+            <h2>Select User</h2>
+            <select id="userDropdown" onchange="fetchTransactions(this.value)">
+                <option value="">Select a User</option>
+            </select>
+
+            <h2>User Transactions</h2>
+            <table id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsList"></tbody>
+            </table>
+
+            <h2>Add Transaction</h2>
+            <input type="number" id="amount" placeholder="Amount">
+            <input type="text" id="date" placeholder="Date (e.g., '11.09')">
+            <select id="type">
+                <option value=""payment"">Payment</option>
+                <option value=""debt"">Debt</option>
+            </select>
+            <button onclick="addTransaction()">Add Transaction</button>
+        </div>
     </div>
 
     <script>
@@ -59,7 +103,7 @@
             apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
             authDomain: "debts-92f72.firebaseapp.com",
             projectId: "debts-92f72",
-            storageBucket: "debts-92f72.firebaseapp.com",
+            storageBucket: "debts-92f72.appspot.com",
             messagingSenderId: "904817355212",
             appId: "1:904817355212:web:0e50faa2c6ac4d5ec6d569"
         };
@@ -69,86 +113,59 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        window.onload = () => {
+            document.getElementById('loginForm').style.display = 'block';
+        };
+
         // Login function
         function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const errorMessage = document.getElementById('errorMessage');
-            
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    if (user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
-                        // Hide login form and show admin dashboard
+                .then(userCredential => {
+                    if (userCredential.user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
                         document.getElementById('loginForm').style.display = 'none';
                         document.getElementById('adminDashboard').style.display = 'block';
                         fetchUsers();
                     } else {
-                        errorMessage.textContent = "You are not authorized to access the admin panel.";
+                        alert("Unauthorized user.");
                         auth.signOut();
                     }
                 })
-                .catch((error) => {
-                    console.error("Error logging in: ", error);
-                    document.getElementById('errorMessage').textContent = "Failed to log in: " + error.message;
+                .catch(error => {
+                    document.getElementById('errorMessage').textContent = "Login failed: " + error.message;
                 });
         }
 
         // Fetch the list of users from the 'login' collection
         async function fetchUsers() {
-            try {
-                const usersSnapshot = await db.collection("login").get();
-                const userDropdown = document.getElementById('userDropdown');
-                userDropdown.innerHTML = '<option value="">Select a User</option>'; // Clear previous options
-
-                usersSnapshot.forEach(doc => {
-                    const userData = doc.data();
-                    const option = document.createElement("option");
-                    option.value = doc.id;  // The document ID is the user's UID
-                    option.textContent = `${userData.name} (${userData.email.replace(/\"/g, '')})`; // Remove extra quotes in email
-                    userDropdown.appendChild(option);
-                });
-            } catch (error) {
-                console.error("Error fetching users: ", error);
-                alert("Error fetching users. Check the console for details.");
-            }
+            const usersSnapshot = await db.collection("login").get();
+            const userDropdown = document.getElementById('userDropdown');
+            userDropdown.innerHTML = '<option value="">Select a User</option>';
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                const option = document.createElement("option");
+                option.value = doc.id;
+                option.textContent = `${userData.name} (${userData.email.replace(/\"/g, '')})`;
+                userDropdown.appendChild(option);
+            });
         }
 
         // Fetch transactions for the selected user
         async function fetchTransactions(userUid) {
+            const transactionsList = document.getElementById('transactionsList');
+            transactionsList.innerHTML = '';
             if (!userUid) return;
-            
-            try {
-                const transactionsSnapshot = await db.collection(userUid).get();
-                const transactionsList = document.getElementById('transactionsList');
-                transactionsList.innerHTML = '';  // Clear previous transactions table
-
-                // Loop through each transaction and add it to the table
-                transactionsSnapshot.forEach(doc => {
-                    const transaction = doc.data();
-                    const row = document.createElement("tr");
-
-                    const amountCell = document.createElement("td");
-                    amountCell.textContent = transaction.amount;
-                    row.appendChild(amountCell);
-
-                    const dateCell = document.createElement("td");
-                    dateCell.textContent = transaction.date;
-                    row.appendChild(dateCell);
-
-                    const typeCell = document.createElement("td");
-                    typeCell.textContent = transaction.type;
-                    row.appendChild(typeCell);
-
-                    transactionsList.appendChild(row);
-                });
-            } catch (error) {
-                console.error("Error fetching transactions: ", error);
-                alert("Error fetching transactions.");
-            }
+            const snapshot = await db.collection(userUid).get();
+            snapshot.forEach(doc => {
+                const transaction = doc.data();
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${transaction.amount}</td><td>${transaction.date}</td><td>${transaction.type}</td>`;
+                transactionsList.appendChild(row);
+            });
         }
 
-        // Add a new transaction to the selected user's collection
+        // Add a new transaction with an ID one lower than the smallest existing document ID
         async function addTransaction() {
             const userUid = document.getElementById('userDropdown').value;
             const amount = document.getElementById('amount').value;
@@ -160,33 +177,32 @@
                 return;
             }
 
-            try {
-                // Add the new transaction to the selected user's collection
-                await db.collection(userUid).add({
-                    amount: parseInt(amount),
-                    date: date,
-                    type: type
-                });
+            const snapshot = await db.collection(userUid).get();
+            let minId = 99; // Start at 99 if no documents
+            snapshot.forEach(doc => {
+                const docId = parseInt(doc.id);
+                if (!isNaN(docId) && docId < minId) minId = docId;
+            });
+            const newId = (minId - 1).toString();
 
-                alert("Transaction added successfully!");
-                fetchTransactions(userUid);  // Refresh the transaction list
-            } catch (error) {
-                console.error("Error adding transaction: ", error);
-                alert("Failed to add transaction.");
-            }
+            // Store the type as "debt" or "payment" string explicitly
+            const transactionType = type === "payment" ? "payment" : "debt";
+
+            await db.collection(userUid).doc(newId).set({
+                amount: parseInt(amount),
+                date: date,
+                type: transactionType
+            });
+            alert("Transaction added.");
+            fetchTransactions(userUid);
         }
 
-        // Log out the admin
+        // Logout function
         function logout() {
-            firebase.auth().signOut()
-                .then(() => {
-                    // Show the login form again
-                    document.getElementById('loginForm').style.display = 'block';
-                    document.getElementById('adminDashboard').style.display = 'none';
-                })
-                .catch((error) => {
-                    console.error("Error logging out: ", error);
-                });
+            auth.signOut().then(() => {
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('adminDashboard').style.display = 'none';
+            });
         }
     </script>
 </body>
