@@ -8,54 +8,98 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #121212;
-            color: #E0E0E0;
+        /* Styling for dark, glossy UI with blue-green color scheme */
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0e2029, #12343b);
+            color: #ffffff; /* Set text color to white for readability */
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-        }
-        #container {
-            width: 100%;
-            max-width: 400px;
+            overflow-y: auto;
             padding: 20px;
-            box-sizing: border-box;
         }
+
         h1, h2 {
+            color: #88c0d0;
             text-align: center;
+            margin-bottom: 15px;
         }
+
+        .container {
+            background: rgba(0, 150, 136, 0.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            color: #ffffff;
+        }
+
+        #loginForm, #adminDashboard {
+            display: none;
+        }
+
         input, select, button {
             width: 100%;
             padding: 10px;
-            margin: 10px 0;
+            margin-bottom: 15px;
             border: none;
             border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #E0E0E0;
+            font-size: 1em;
+            color: #ffffff;
         }
-        table {
+
+        input, select {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+            background: #005e5b; /* Darker button color */
+            color: #ffffff;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 100, 100, 0.2);
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #00494a; /* Even darker color on hover */
+        }
+
+        #transactionsTable {
             width: 100%;
             border-collapse: collapse;
+            background: rgba(0, 150, 136, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
             margin-top: 10px;
         }
-        th, td {
+
+        #transactionsTable th, #transactionsTable td {
             padding: 10px;
-            border-bottom: 1px solid #333;
             text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff; /* White text inside the table for visibility */
         }
-        #loginForm, #adminDashboard {
-            display: none;
+
+        #transactionsTable th {
+            background: rgba(255, 255, 255, 0.1);
         }
     </style>
 </head>
 <body>
-    <div id="container">
+    <div class="container">
         <h1>Admin Dashboard</h1>
-
+        
         <!-- Login Form -->
         <div id="loginForm">
             <h2>Login</h2>
@@ -65,10 +109,9 @@
             <p id="errorMessage" style="color: red;"></p>
         </div>
 
-        <!-- Main Admin Dashboard -->
+        <!-- Admin Dashboard -->
         <div id="adminDashboard">
             <button onclick="logout()">Logout</button>
-
             <h2>Select User</h2>
             <select id="userDropdown" onchange="fetchTransactions(this.value)">
                 <option value="">Select a User</option>
@@ -90,15 +133,15 @@
             <input type="number" id="amount" placeholder="Amount">
             <input type="text" id="date" placeholder="Date (e.g., '11.09')">
             <select id="type">
-                <option value=""payment"">Payment</option>
-                <option value=""debt"">Debt</option>
+                <option value="debt">Debt</option>
+                <option value="payment">Payment</option>
             </select>
             <button onclick="addTransaction()">Add Transaction</button>
         </div>
     </div>
 
     <script>
-        // Firebase configuration
+        // Firebase config with all provided API details
         const firebaseConfig = {
             apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
             authDomain: "debts-92f72.firebaseapp.com",
@@ -113,31 +156,33 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        window.onload = () => {
-            document.getElementById('loginForm').style.display = 'block';
-        };
+        // Show login form initially
+        document.getElementById('loginForm').style.display = 'block';
 
         // Login function
         function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            
             auth.signInWithEmailAndPassword(email, password)
-                .then(userCredential => {
-                    if (userCredential.user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    if (user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") { // replace with your admin UID
                         document.getElementById('loginForm').style.display = 'none';
                         document.getElementById('adminDashboard').style.display = 'block';
                         fetchUsers();
                     } else {
-                        alert("Unauthorized user.");
+                        errorMessage.textContent = "Unauthorized access.";
                         auth.signOut();
                     }
                 })
-                .catch(error => {
-                    document.getElementById('errorMessage').textContent = "Login failed: " + error.message;
+                .catch((error) => {
+                    errorMessage.textContent = "Login failed: " + error.message;
                 });
         }
 
-        // Fetch the list of users from the 'login' collection
+        // Fetch users
         async function fetchUsers() {
             const usersSnapshot = await db.collection("login").get();
             const userDropdown = document.getElementById('userDropdown');
@@ -151,13 +196,12 @@
             });
         }
 
-        // Fetch transactions for the selected user
+        // Fetch transactions
         async function fetchTransactions(userUid) {
             const transactionsList = document.getElementById('transactionsList');
             transactionsList.innerHTML = '';
-            if (!userUid) return;
-            const snapshot = await db.collection(userUid).get();
-            snapshot.forEach(doc => {
+            const transactionsSnapshot = await db.collection(userUid).get();
+            transactionsSnapshot.forEach(doc => {
                 const transaction = doc.data();
                 const row = document.createElement("tr");
                 row.innerHTML = `<td>${transaction.amount}</td><td>${transaction.date}</td><td>${transaction.type}</td>`;
@@ -165,7 +209,7 @@
             });
         }
 
-        // Add a new transaction with an ID one lower than the smallest existing document ID
+        // Add transaction
         async function addTransaction() {
             const userUid = document.getElementById('userDropdown').value;
             const amount = document.getElementById('amount').value;
@@ -177,23 +221,17 @@
                 return;
             }
 
-            const snapshot = await db.collection(userUid).get();
-            let minId = 99; // Start at 99 if no documents
-            snapshot.forEach(doc => {
-                const docId = parseInt(doc.id);
-                if (!isNaN(docId) && docId < minId) minId = docId;
-            });
-            const newId = (minId - 1).toString();
+            const transactionsSnapshot = await db.collection(userUid).get();
+            const docNumbers = transactionsSnapshot.docs.map(doc => parseInt(doc.id, 10)).sort((a, b) => a - b);
+            const newDocName = docNumbers.length ? docNumbers[0] - 1 : 99;
 
-            // Store the type as "debt" or "payment" string explicitly
-            const transactionType = type === "payment" ? "payment" : "debt";
-
-            await db.collection(userUid).doc(newId).set({
+            await db.collection(userUid).doc(newDocName.toString()).set({
                 amount: parseInt(amount),
                 date: date,
-                type: transactionType
+                type: type
             });
-            alert("Transaction added.");
+
+            alert("Transaction added successfully!");
             fetchTransactions(userUid);
         }
 
