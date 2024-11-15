@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <style>
+        /* Styling for dark, glossy UI with blue-green color scheme */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0e2029, #12343b);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: #88c0d0;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .container {
+            background: rgba(0, 150, 136, 0.15);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 600px;
+            width: 100%;
+            color: #ffffff;
+        }
+
+        #loginForm, #adminDashboard {
+            display: none;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            color: #ffffff;
+        }
+
+        input, select {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        button {
+            background: #005e5b;
+            color: #ffffff;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 100, 100, 0.2);
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #00494a;
+        }
+
+        #transactionsTable {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(0, 150, 136, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        #transactionsTable th, #transactionsTable td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        #transactionsTable th {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        #transactionsTable button {
+            width: auto;
+            padding: 5px 10px;
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Admin Dashboard</h1>
+        
+        <div id="loginForm">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p id="errorMessage" style="color: red;"></p>
+        </div>
+
+        <div id="adminDashboard">
+            <button onclick="logout()">Logout</button>
+            <h2>Select User</h2>
+            <select id="userDropdown" onchange="fetchTransactions(this.value)">
+                <option value="">Select a User</option>
+            </select>
+
+            <h2>User Transactions</h2>
+            <table id="transactionsTable">
+                <thead>
+                    <tr>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="transactionsList"></tbody>
+            </table>
+
+            <h2>Add Transaction</h2>
+            <input type="number" id="amount" placeholder="Amount">
+            <input type="text" id="date" placeholder="Date (e.g., '11.09')">
+            <select id="type">
+                <option value="debt">Debt</option>
+                <option value="payment">Payment</option>
+            </select>
+            <button onclick="addTransaction()">Add Transaction</button>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
+            authDomain: "debts-92f72.firebaseapp.com",
+            projectId: "debts-92f72",
+            storageBucket: "debts-92f72.appspot.com",
+            messagingSenderId: "904817355212",
+            appId: "1:904817355212:web:0e50faa2c6ac4d5ec6d569"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        document.getElementById('loginForm').style.display = 'block';
+
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .then(userCredential => {
+                    const user = userCredential.user;
+                    if (user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
+                        document.getElementById('loginForm').style.display = 'none';
+                        document.getElementById('adminDashboard').style.display = 'block';
+                        fetchUsers();
+                    } else {
+                        errorMessage.textContent = "Unauthorized access.";
+                        auth.signOut();
+                    }
+                })
+                .catch(error => {
+                    errorMessage.textContent = "Login failed: " + error.message;
+                });
+        }
+
+        async function fetchUsers() {
+            const usersSnapshot = await db.collection("login").get();
+            const userDropdown = document.getElementById('userDropdown');
+            userDropdown.innerHTML = '<option value="">Select a User</option>';
+            usersSnapshot.forEach(doc => {
+                const userData = doc.data();
+                const option = document.createElement("option");
+                option.value = doc.id;
+                option.textContent = `${userData.name} (${userData.email.replace(/\"/g, '')})`;
+                userDropdown.appendChild(option);
+            });
+        }
+
+        async function fetchTransactions(userUid) {
+            const transactionsList = document.getElementById('transactionsList');
+            transactionsList.innerHTML = '';
+            const transactionsSnapshot = await db.collection(userUid).get();
+            transactionsSnapshot.forEach(doc => {
+                const transaction = doc.data();
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td contenteditable="false">${transaction.amount}</td>
+                    <td contenteditable="false">${transaction.date}</td>
+                    <td contenteditable="false">${transaction.type}</td>
+                    <td>
+                        <button onclick="editTransaction(this, '${userUid}', '${doc.id}')">✏️</button>
+                        <button onclick="deleteTransaction('${userUid}', '${doc.id}')">🗑️</button>
+                    </td>`;
+                transactionsList.appendChild(row);
+            });
+        }
+
+        async function editTransaction(button, userUid, docId) {
+            const row = button.closest("tr");
+            const editable = button.textContent === "✏️";
+            button.textContent = editable ? "✔️" : "✏️";
+            [...row.querySelectorAll("td[contenteditable]")].forEach(cell => {
+                cell.contentEditable = editable.toString();
+                if (!editable) {
+                    const [amount, date, type] = row.children;
+                    db.collection(userUid).doc(docId).set({
+                        amount: parseInt(amount.textContent),
+                        date: date.textContent,
+                        type: type.textContent
+                    });
+                }
+            });
+        }
+
+        async function deleteTransaction(userUid, docId) {
+            if (confirm("Are you sure you want to delete this transaction?")) {
+                await db.collection(userUid).doc(docId).delete();
+                fetchTransactions(userUid);
+            }
+        }
+
+        async function addTransaction() {
+            const userUid = document.getElementById('userDropdown').value;
+            const amount = document.getElementById('amount').value;
+            const date = document.getElementById('date').value;
+            const type = document.getElementById('type').value;
+
+            if (!userUid || !amount || !date || !type) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const newId = Date.now().toString();
+            await db.collection(userUid).doc(newId).set({
+                amount: parseInt(amount),
+                date,
+                type
+            });
+            fetchTransactions(userUid);
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                document.getElementById('loginForm').style.display = 'block';
+                document.getElementById('adminDashboard').style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
