@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Debt Tracker with Login</title>
+    <title>Debt Tracker with Persistent Login</title>
     <style>
         /* Basic styling */
         * {
@@ -67,6 +67,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-weight: bold;
+            margin-top: 10px;
         }
 
         /* Displaying the total debt */
@@ -117,6 +118,18 @@
             text-align: center;
             margin-top: 15px;
         }
+
+        /* Logout button */
+        .logout-button {
+            background-color: #e57373;
+            color: #ffffff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -127,7 +140,8 @@
         <form id="login-form">
             <input type="email" id="email" placeholder="Email" autocomplete="username" required />
             <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
-            <button type="button" onclick="login()">Login</button>
+            <button type="button" id="loginButton">Login</button>
+            <button type="button" id="googleLoginButton">Login with Google</button>
         </form>
         <div id="login-error" style="color: red; margin-top: 10px;"></div>
     </div>
@@ -136,16 +150,16 @@
     <div class="container" id="main-container">
         <div id="total-debt" class="total">Loading...</div>
         <div id="transaction-list" class="transactions"></div>
-        <button id="toggle-transactions-button" class="show-button" onclick="toggleTransactions()">Show All</button>
+        <button id="toggle-transactions-button" class="show-button">Show All</button>
+        <!-- Logout Button -->
+        <button id="logout-button" class="logout-button">Log Out</button>
     </div>
 
     <script type="module">
-        // Import Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-        import { getFirestore, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
-        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
             authDomain: "debts-92f72.firebaseapp.com",
@@ -155,27 +169,41 @@
             appId: "1:904817355212:web:fd6837ba25f57d0ec6d569"
         };
 
-        // Initialize Firebase and Firestore
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // Login Function using Firebase Auth
+        // Handle persistent login
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById("login-popup").style.display = "none";
+                document.getElementById("main-container").style.display = "block";
+                loadTransactions(user.uid);
+            } else {
+                document.getElementById("login-popup").style.display = "block";
+                document.getElementById("main-container").style.display = "none";
+            }
+        });
+
+        // Handle email login
+        document.getElementById("loginButton").addEventListener("click", login);
+
+        // Handle Google login
+        document.getElementById("googleLoginButton").addEventListener("click", loginWithGoogle);
+
+        // Handle logout
+        document.getElementById("logout-button").addEventListener("click", logout);
+
         async function login() {
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
             const loginError = document.getElementById("login-error");
 
             try {
-                // Sign in the user with Firebase Auth
                 const userCredential = await signInWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
-
-                // Hide login popup and show main content
                 document.getElementById("login-popup").style.display = "none";
                 document.getElementById("main-container").style.display = "block";
-
-                // Load user-specific transactions
                 loadTransactions(user.uid);
             } catch (error) {
                 console.error("Login error:", error);
@@ -183,18 +211,36 @@
             }
         }
 
-        // Expose the login function globally
-        window.login = login;
+        async function loginWithGoogle() {
+            const provider = new GoogleAuthProvider();
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                document.getElementById("login-popup").style.display = "none";
+                document.getElementById("main-container").style.display = "block";
+                loadTransactions(user.uid);
+            } catch (error) {
+                console.error("Google Login error:", error);
+            }
+        }
 
-        let allTransactions = [];
+        async function logout() {
+            try {
+                await signOut(auth);
+                document.getElementById("login-popup").style.display = "block";
+                document.getElementById("main-container").style.display = "none";
+            } catch (error) {
+                console.error("Logout error:", error);
+            }
+        }
+
         const TRANSACTION_LIMIT = 5;
+        let allTransactions = [];
 
-        // Load user-specific transactions from the Firestore collection named by UID
         async function loadTransactions(uid) {
             const transactionsRef = collection(db, uid);
             try {
                 const transactionSnapshot = await getDocs(transactionsRef);
-
                 let totalDebt = 0;
                 allTransactions = [];
 
@@ -213,44 +259,42 @@
                     }
                 });
 
-                document.getElementById("total-debt").innerText = `${totalDebt} Ft`;
-                renderTransactions(allTransactions.slice(0, TRANSACTION_LIMIT));
+                document.getElementById("total-debt").innerText = `${totalDebt.toFixed(0)} Ft`;
+
+                // Display first few transactions
+                displayTransactions(TRANSACTION_LIMIT);
+
+                // Show all transactions button
+                document.getElementById("toggle-transactions-button").addEventListener("click", () => {
+                    if (document.getElementById("toggle-transactions-button").innerText === "Show All") {
+                        displayTransactions(allTransactions.length);
+                        document.getElementById("toggle-transactions-button").innerText = "Show Less";
+                    } else {
+                        displayTransactions(TRANSACTION_LIMIT);
+                        document.getElementById("toggle-transactions-button").innerText = "Show All";
+                    }
+                });
             } catch (error) {
                 console.error("Error loading transactions:", error);
-                document.getElementById("total-debt").innerText = "Error loading transactions.";
             }
         }
 
-        // Render the list of transactions
-        function renderTransactions(transactions) {
-            const transactionContainer = document.getElementById("transaction-list");
-            transactionContainer.innerHTML = "";
+        function displayTransactions(limit) {
+            const transactions = allTransactions.slice(0, limit);
+            const transactionList = document.getElementById("transaction-list");
+            transactionList.innerHTML = ""; // Clear existing transactions
 
-            transactions.forEach((transaction) => {
+            transactions.forEach(transaction => {
                 const transactionElement = document.createElement("div");
                 transactionElement.className = `transaction ${transaction.type}`;
-                const sign = transaction.type === "debt" ? "-" : "+";
+
                 transactionElement.innerHTML = `
-                    <div>${sign}${transaction.amount} Ft</div>
+                    <div>${transaction.type === "debt" ? '-' : '+'} ${transaction.amount} Ft</div>
                     <div>${transaction.date}</div>
                 `;
-                transactionContainer.appendChild(transactionElement);
+                transactionList.appendChild(transactionElement);
             });
         }
-
-        // Toggle between "Show All" and "Show Less" functionality
-        function toggleTransactions() {
-            const button = document.getElementById("toggle-transactions-button");
-            if (button.innerText === "Show All") {
-                renderTransactions(allTransactions);
-                button.innerText = "Show Less";
-            } else {
-                renderTransactions(allTransactions.slice(0, TRANSACTION_LIMIT));
-                button.innerText = "Show All";
-            }
-        }
-
-        window.toggleTransactions = toggleTransactions;
     </script>
 </body>
 </html>
