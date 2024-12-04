@@ -1,0 +1,23 @@
+v1
+    version 1 with gui. 
+    basic functionality. 
+    Problems with scrolling in case there are too many transactions
+
+v2
+    updated design. 
+    scrolling still broken. 
+    Halfay trough the page the background color disappears
+
+v3
+    scrolling fixed.
+    Background color fixed.
+    added option to delete transactions
+    added option to edit transaction amount and date (type is fixed)
+
+v4
+    added total amount display:
+        on the bottom of the page the total debt for selected user is displayed
+        bug: after editing transaction the total doesn't refresh automatically
+
+v5
+    added persistent login

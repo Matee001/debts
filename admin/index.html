@@ -8,6 +8,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
     <style>
+        /* Styling */
         * {
             margin: 0;
             padding: 0;
@@ -83,6 +84,12 @@
         .action-buttons button {
             flex: 1;
         }
+
+        #total-debt {
+            margin-top: 20px;
+            font-size: 1.2em;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -122,6 +129,7 @@
                 <option value="payment">Payment</option>
             </select>
             <button onclick="addTransaction()">Add Transaction</button>
+            <div id="total-debt"></div>
         </div>
     </div>
 
@@ -139,30 +147,37 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Set persistence
+        auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+        // Check auth state
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                if (user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
+                    document.getElementById("loginForm").style.display = "none";
+                    document.getElementById("adminDashboard").style.display = "block";
+                    fetchUsers();
+                } else {
+                    alert("Unauthorized");
+                    auth.signOut();
+                }
+            } else {
+                document.getElementById("loginForm").style.display = "block";
+                document.getElementById("adminDashboard").style.display = "none";
+            }
+        });
+
         function login() {
             const email = document.getElementById("email").value;
             const password = document.getElementById("password").value;
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    if (userCredential.user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
-                        document.getElementById("loginForm").style.display = "none";
-                        document.getElementById("adminDashboard").style.display = "block";
-                        fetchUsers();
-                    } else {
-                        alert("Unauthorized");
-                        auth.signOut();
-                    }
-                })
                 .catch((error) => {
                     document.getElementById("errorMessage").innerText = error.message;
                 });
         }
 
         function logout() {
-            auth.signOut().then(() => {
-                document.getElementById("loginForm").style.display = "block";
-                document.getElementById("adminDashboard").style.display = "none";
-            });
+            auth.signOut();
         }
 
         async function fetchUsers() {
@@ -179,13 +194,15 @@
         async function fetchTransactions(userId) {
             const transactionsList = document.getElementById("transactionsList");
             transactionsList.innerHTML = "";
+            let totalDebt = 0;
+
             const snapshot = await db.collection(userId).get();
             snapshot.forEach((doc) => {
                 const data = doc.data();
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td data-original="${data.amount}">${data.amount}</td>
-                    <td data-original="${data.date}">${data.date}</td>
+                    <td>${data.amount}</td>
+                    <td>${data.date}</td>
                     <td>${data.type}</td>
                     <td>
                         <div class="action-buttons">
@@ -195,7 +212,16 @@
                     </td>
                 `;
                 transactionsList.appendChild(row);
+
+                // Calculate total debt
+                if (data.type === "debt") {
+                    totalDebt += data.amount;
+                } else if (data.type === "payment") {
+                    totalDebt -= data.amount;
+                }
             });
+
+            document.getElementById("total-debt").innerText = `Total Debt: ${totalDebt} Ft`;
         }
 
         async function deleteTransaction(userId, transactionId) {
@@ -229,7 +255,7 @@
             const type = document.getElementById("type").value;
             const snapshot = await db.collection(userId).get();
             const docIds = snapshot.docs.map(doc => parseInt(doc.id)).sort((a, b) => a - b);
-            const newId = docIds.length ? docIds[0] - 1 : 99;
+            const newId = docIds.length ? docIds[docIds.length - 1] + 1 : 1;
             await db.collection(userId).doc(newId.toString()).set({ amount, date, type });
             fetchTransactions(userId);
         }
