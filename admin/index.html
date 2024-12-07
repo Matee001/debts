@@ -147,10 +147,8 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Set persistence
         auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
 
-        // Check auth state
         auth.onAuthStateChanged((user) => {
             if (user) {
                 if (user.uid === "01bLIykolnQuLHBsX7Ca5BKwMMo1") {
@@ -213,15 +211,15 @@
                 `;
                 transactionsList.appendChild(row);
 
-                // Calculate total debt
                 if (data.type === "debt") {
-                    totalDebt += data.amount;
-                } else if (data.type === "payment") {
                     totalDebt -= data.amount;
+                } else if (data.type === "payment") {
+                    totalDebt += data.amount;
                 }
             });
 
-            document.getElementById("total-debt").innerText = `Total Debt: ${totalDebt} Ft`;
+            const totalDebtDisplay = totalDebt >= 0 ? `+${totalDebt}` : `${totalDebt}`;
+            document.getElementById("total-debt").innerText = `Total Debt: ${totalDebtDisplay} Ft`;
         }
 
         async function deleteTransaction(userId, transactionId) {

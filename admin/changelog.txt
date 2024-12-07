@@ -21,3 +21,6 @@ v4
 
 v5
     added persistent login
+
+v5.1
+    changed prefix for total (now displays same number as user app)
