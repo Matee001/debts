@@ -24,3 +24,6 @@ v5
 
 v5.1
     changed prefix for total (now displays same number as user app)
+
+v5.2
+    fixed error: now correctly generates new document name (smallest-1)
