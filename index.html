@@ -6,7 +6,28 @@
     <title>Debt Tracker with Persistent Login</title>
     <link rel="icon" type="image/png" href="fav.png">
     <style>
-        /* Basic styling */
+        /* Update success popup positioning */
+        .success-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(129, 199, 132, 0.9);
+            color: #121212;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            z-index: 2001;
+            display: none;
+            opacity: 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            text-align: center;
+            width: 320px;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* All other styles remain exactly the same */
         * {
             margin: 0;
             padding: 0;
@@ -23,17 +44,42 @@
             color: #ffffff;
         }
 
-        /* Container for main content */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #121212;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #90caf9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .container {
             background: rgba(33, 33, 33, 0.9);
             padding: 30px;
             width: 320px;
             border-radius: 15px;
             box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
-            display: none; /* Hidden until login */
+            display: none;
         }
 
-        /* Login popup styling */
         .login-popup {
             position: absolute;
             top: 50%;
@@ -45,6 +91,7 @@
             border-radius: 15px;
             box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
             text-align: center;
+            display: none;
         }
 
         .login-popup h2 {
@@ -71,7 +118,68 @@
             margin-top: 10px;
         }
 
-        /* Displaying the total debt */
+        .agreement-text {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .agreement-link {
+            color: #90caf9;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .agreement-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(48, 48, 48, 0.95);
+            padding: 30px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            border-radius: 15px;
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7);
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .agreement-popup h2 {
+            color: #90caf9;
+            margin-bottom: 20px;
+        }
+
+        .agreement-popup p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+
         .total {
             font-size: 26px;
             font-weight: bold;
@@ -80,7 +188,6 @@
             margin-bottom: 20px;
         }
 
-        /* Transaction styling */
         .transactions {
             display: flex;
             flex-direction: column;
@@ -107,7 +214,6 @@
             font-weight: bold;
         }
 
-        /* Style for the 'Show All' and 'Show Less' buttons */
         .show-button {
             background-color: #90caf9;
             color: #121212;
@@ -120,7 +226,6 @@
             margin-top: 15px;
         }
 
-        /* Logout button */
         .logout-button {
             background-color: #e57373;
             color: #ffffff;
@@ -131,9 +236,61 @@
             font-weight: bold;
             margin-top: 15px;
         }
+
+        .maintenance-banner {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            background-color: rgba(255, 223, 0, 0.7);
+            color: #121212;
+            text-align: center;
+            padding: 15px 20px;
+            font-weight: bold;
+            z-index: 2001;
+            display: none;
+            cursor: pointer;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            transition: transform 0.2s ease;
+        }
+
+        .maintenance-banner:hover {
+            transform: translateX(-50%) scale(1.02);
+        }
+
+        .agreement-text {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #ffffff;
+            text-align: center;
+        }
+
+        .agreement-link {
+            color: #90caf9;
+            text-decoration: underline;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <!-- Success Popup -->
+    <div id="success-popup" class="success-popup">
+        Password reset email sent successfully!
+    </div>
+
+    <!-- Rest of the HTML remains exactly the same -->
+    <!-- Maintenance Banner -->
+    <div id="maintenance-banner" class="maintenance-banner">
+        Site under maintenance
+    </div>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+    </div>
 
     <!-- Login Popup -->
     <div id="login-popup" class="login-popup">
@@ -143,9 +300,75 @@
             <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
             <button type="button" id="loginButton">Login</button>
             <button type="button" id="googleLoginButton">Login with Google</button>
+            <button type="button" id="forgotPasswordButton" class="forgot-password">Forgot Password?</button>
         </form>
         <div id="login-error" style="color: red; margin-top: 10px;"></div>
+        <div class="agreement-text">
+            By using the service, you accept our<br>
+            <span class="agreement-link" onclick="showAgreement()">User Agreement</span>
+        </div>
     </div>
+
+    <!-- User Agreement Popup -->
+    <div id="agreement-popup" class="agreement-popup">
+        <button class="close-button" onclick="hideAgreement()">&times;</button>
+        <h2>User Agreement</h2>
+        <div id="agreement-content" style="white-space: pre-line">
+A magyar verzióhoz görgessen
+
+User Agreement for debts.matee.xyz
+
+This agreement applies to the use of debts.matee.xyz. By using the website, users agree to the terms and conditions outlined below and acknowledge the purpose and operation of the system.
+
+Technical Requirements
+To use debts.matee.xyz, your browser must support JavaScript. Please ensure JavaScript is enabled for the best experience on the website.
+
+Positive Balance
+If a user has a positive balance, it means that Máté Kovács owes them money. The system keeps track of the amount and the date of the transaction. However, if the user wishes to reclaim their money, they must contact Máté Kovács personally or via email at hello@matee.xyz. The website serves only as a platform for tracking amounts and does not handle requests for repayment automatically.
+
+Negative Balance
+If a user has a negative balance, it means they owe money to Máté Kovács. In this case, the user is obligated to repay the debt within thirty (30) days. Failure to do so may result in a loss of trust and may affect future financial interactions. Users can view the details of their debt, including the amount and the date, on debts.matee.xyz.
+
+Transaction Details
+The system records and displays the amount and date of transactions. If a user wants to know additional details, such as the purpose of a transaction, they must contact Máté Kovács at hello@matee.xyz. This is the only way to request further information.
+
+Account Information
+Login information for debts.matee.xyz is securely encrypted and stored in Google Firebase. Users can update their email address or password by visiting accounts.matee.xyz, logging in, and selecting the relevant options. Note that if the user changes their email address, they will no longer be able to log in using Google, as it is tied to the previous email address.
+
+General Provisions
+Users acknowledge that debts.matee.xyz is solely a personal tracking tool for Máté Kovács and is not a legal or official financial tool. By using the website, users agree to adhere to the terms outlined in this agreement and respect the obligations associated with their balances.
+
+By using debts.matee.xyz, users confirm that they understand and accept this user agreement.
+
+
+
+Felhasználói Megállapodás a debts.matee.xyz Weboldalhoz
+
+Ez a megállapodás a debts.matee.xyz weboldal használatára vonatkozik. A weboldal használatával a felhasználó elfogadja az alábbi feltételeket, és kijelenti, hogy megérti a rendszer célját és működését.
+
+Technikai Követelmények
+A debts.matee.xyz használatához a böngészőnek támogatnia kell a JavaScriptet. Kérjük, hogy engedélyezze a JavaScriptet a weboldal zökkenőmentes használatához.
+
+Pozitív Egyenleg
+Amennyiben a felhasználó pozitív egyenleggel rendelkezik, az azt jelenti, hogy Kovács Máté tartozik neki pénzzel. A rendszer automatikusan nyilvántartja az összeget és a tranzakció dátumát. Amennyiben a felhasználó szeretné visszakapni a pénzét, személyesen vagy e-mailben kell felvennie a kapcsolatot Kovács Mátéval a hello@matee.xyz címen. A weboldal kizárólag az adatok nyilvántartására szolgál, és nem kezeli automatikusan a visszafizetési kéréseket.
+
+Negatív Egyenleg
+Amennyiben a felhasználó negatív egyenleggel rendelkezik, az azt jelenti, hogy pénzzel tartozik Kovács Máténak. Ebben az esetben a felhasználó köteles a tartozását harminc (30) napon belül visszafizetni. A határidő elmulasztása bizalomvesztést eredményezhet, és negatívan befolyásolhatja a jövőbeni pénzügyi kapcsolatokat. A felhasználók a debts.matee.xyz oldalon megtekinthetik tartozásuk részleteit, beleértve az összeget és a tranzakció dátumát.
+
+Tranzakciók Részletei
+A rendszer rögzíti és megjeleníti a tranzakciók összegét és dátumát. Amennyiben a felhasználó további részletekre, például a tranzakció céljára kíváncsi, kapcsolatba kell lépnie Kovács Mátéval a hello@matee.xyz e-mail címen. Ez az egyetlen módja annak, hogy további információhoz jusson.
+
+Fiókadatok Kezelése
+A debts.matee.xyz oldalon tárolt bejelentkezési adatok szigorúan titkosítva vannak, és a Google Firebase rendszerében kerülnek tárolásra. A felhasználók módosíthatják e-mail címüket vagy jelszavukat a accounts.matee.xyz oldalon, ahol bejelentkezés után kiválaszthatják a megfelelő lehetőségeket. Fontos megjegyezni, hogy ha a felhasználó megváltoztatja e-mail címét, akkor nem fog tudni bejelentkezni Google-fiókjával, mivel az a korábbi e-mail címhez van társítva.
+
+Általános rendelkezések
+A felhasználó tudomásul veszi, hogy a debts.matee.xyz kizárólag Kovács Máté személyes pénzügyeinek nyomon követésére szolgál, és nem minősül hivatalos vagy jogi eszköznek. A weboldal használatával a felhasználó elfogadja a jelen megállapodásban foglaltakat, és tiszteletben tartja az egyenlegeivel kapcsolatos kötelezettségeit.
+
+A debts.matee.xyz használatával a felhasználó kijelenti, hogy megértette és elfogadta a jelen felhasználói megállapodást.</div>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay" onclick="hideAgreement()"></div>
 
     <!-- Main Container (hidden until login) -->
     <div class="container" id="main-container">
@@ -157,9 +380,11 @@
     </div>
 
     <script type="module">
+        // JavaScript code remains exactly the same
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDl6hnUPdneEuC9emWbELvYoplR8vWhEsA",
@@ -167,20 +392,91 @@
             projectId: "debts-92f72",
             storageBucket: "debts-92f72.appspot.com",
             messagingSenderId: "904817355212",
-            appId: "1:904817355212:web:fd6837ba25f57d0ec6d569"
+            appId: "1:904817355212:web:fd6837ba25f57d0ec6d569",
+            databaseURL: "https://debts-92f72-default-rtdb.europe-west1.firebasedatabase.app"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
+        const rtdb = getDatabase(app);
+
+        // Check maintenance status
+        const maintenanceRef = ref(rtdb, 'maintenance');
+        const banner = document.getElementById('maintenance-banner');
+        let currentMaintenanceValue = 0;
+
+        onValue(maintenanceRef, (snapshot) => {
+            currentMaintenanceValue = snapshot.val();
+            if (currentMaintenanceValue === 1 && !isAgreementVisible()) {
+                banner.style.display = 'block';
+            } else {
+                banner.style.display = 'none';
+            }
+        });
+
+        // Add click handler to hide banner
+        banner.addEventListener('click', () => {
+            banner.style.display = 'none';
+        });
+
+        // Handle forgot password with improved success popup
+        document.getElementById("forgotPasswordButton").addEventListener("click", async () => {
+            const email = document.getElementById("email").value;
+            const loginError = document.getElementById("login-error");
+            const successPopup = document.getElementById("success-popup");
+
+            if (!email) {
+                loginError.innerText = "Please enter your email address.";
+                return;
+            }
+
+            try {
+                // Show loading screen while sending email
+                document.getElementById("loading-screen").style.display = "flex";
+                
+                await sendPasswordResetEmail(auth, email);
+                
+                // Hide loading screen
+                document.getElementById("loading-screen").style.display = "none";
+                
+                // Clear any previous error
+                loginError.innerText = "";
+                
+                // Show success popup with fade in
+                successPopup.style.display = 'block';
+                // Force a reflow to ensure the transition works
+                successPopup.offsetHeight;
+                successPopup.style.opacity = '1';
+
+                document.getElementById("password").value = "";
+
+                
+                // Hide the popup after 3 seconds with a fade effect
+                setTimeout(() => {
+                    successPopup.style.opacity = '0';
+                    setTimeout(() => {
+                        successPopup.style.display = 'none';
+                    }, 300); // Wait for the fade out transition
+                }, 6000);
+            } catch (error) {
+                // Hide loading screen
+                document.getElementById("loading-screen").style.display = "none";
+                
+                console.error("Password reset error:", error);
+                loginError.innerText = "Error sending reset email. Please check your email address.";
+            }
+        });
 
         // Handle persistent login
         onAuthStateChanged(auth, (user) => {
             if (user) {
+                document.getElementById("loading-screen").style.display = "none";
                 document.getElementById("login-popup").style.display = "none";
                 document.getElementById("main-container").style.display = "block";
                 loadTransactions(user.uid);
             } else {
+                document.getElementById("loading-screen").style.display = "none";
                 document.getElementById("login-popup").style.display = "block";
                 document.getElementById("main-container").style.display = "none";
             }
@@ -237,6 +533,7 @@
 
         const TRANSACTION_LIMIT = 5;
         let allTransactions = [];
+        let toggleButton = document.getElementById("toggle-transactions-button");
 
         async function loadTransactions(uid) {
             const transactionsRef = collection(db, uid);
@@ -262,21 +559,27 @@
 
                 document.getElementById("total-debt").innerText = `${totalDebt.toFixed(0)} Ft`;
 
+                // Remove existing event listener if it exists
+                toggleButton.removeEventListener('click', toggleTransactions);
+                
+                // Add new event listener
+                toggleButton.addEventListener('click', toggleTransactions);
+                
                 // Display first few transactions
                 displayTransactions(TRANSACTION_LIMIT);
-
-                // Show all transactions button
-                document.getElementById("toggle-transactions-button").addEventListener("click", () => {
-                    if (document.getElementById("toggle-transactions-button").innerText === "Show All") {
-                        displayTransactions(allTransactions.length);
-                        document.getElementById("toggle-transactions-button").innerText = "Show Less";
-                    } else {
-                        displayTransactions(TRANSACTION_LIMIT);
-                        document.getElementById("toggle-transactions-button").innerText = "Show All";
-                    }
-                });
+                toggleButton.innerText = "Show All";
             } catch (error) {
                 console.error("Error loading transactions:", error);
+            }
+        }
+
+        function toggleTransactions() {
+            if (toggleButton.innerText === "Show All") {
+                displayTransactions(allTransactions.length);
+                toggleButton.innerText = "Show Less";
+            } else {
+                displayTransactions(TRANSACTION_LIMIT);
+                toggleButton.innerText = "Show All";
             }
         }
 
@@ -295,6 +598,26 @@
                 `;
                 transactionList.appendChild(transactionElement);
             });
+        }
+
+        // Make functions available globally
+        window.showAgreement = function() {
+            document.getElementById('agreement-popup').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+            banner.style.display = 'none';
+        };
+
+        window.hideAgreement = function() {
+            document.getElementById('agreement-popup').style.display = 'none';
+            document.getElementById('overlay').style.display = 'none';
+            // Check current maintenance value
+            if (currentMaintenanceValue === 1) {
+                banner.style.display = 'block';
+            }
+        };
+
+        function isAgreementVisible() {
+            return document.getElementById('agreement-popup').style.display === 'block';
         }
     </script>
 </body>
